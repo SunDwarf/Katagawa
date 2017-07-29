@@ -1,4 +1,5 @@
 import collections
+import io
 import itertools
 import logging
 import sys
@@ -520,7 +521,8 @@ class Table(metaclass=TableMeta, register=False):
         if self._session is None:
             self._session = session
 
-        q = "INSERT INTO {} ".format(self.table.__quoted_name__)
+        q = io.StringIO()
+        q.write("INSERT INTO {} ".format(self.table.__quoted_name__))
         params = {}
         column_names = []
         sql_params = []
@@ -539,9 +541,9 @@ class Table(metaclass=TableMeta, register=False):
                 params[name] = value
                 sql_params.append(param_name)
 
-        q += "({}) ".format(", ".join(column_names))
-        q += "VALUES "
-        q += "({}) ".format(", ".join(sql_params))
+        q.write("({}) ".format(", ".join(column_names)))
+        q.write("VALUES ")
+        q.write("({}) ".format(", ".join(sql_params)))
         # check if we support RETURNS
         if session.bind.dialect.has_returns:
             columns_to_get = []
@@ -551,10 +553,10 @@ class Table(metaclass=TableMeta, register=False):
                 columns_to_get.append(column)
 
             to_return = ", ".join(column.quoted_name for column in columns_to_get)
-            q += " RETURNING {}".format(to_return)
+            q.write(" RETURNING {}".format(to_return))
 
-        q += ";"
-        return q, params
+        q.write(";")
+        return q.getvalue(), params
 
     def _get_update_sql(self, emitter: typing.Callable[[], str], session: 'md_session.Session'):
         """
@@ -564,7 +566,8 @@ class Table(metaclass=TableMeta, register=False):
             self._session = session
 
         params = {}
-        base_query = "UPDATE {} SET ".format(self.table.__quoted_name__)
+        base_query = io.StringIO()
+        base_query.write("UPDATE {} SET ".format(self.table.__quoted_name__))
         # the params to "set"
         sets = []
 
@@ -590,7 +593,7 @@ class Table(metaclass=TableMeta, register=False):
         if not sets:
             return None, None
 
-        base_query += ", ".join(sets)
+        base_query.write(", ".join(sets))
 
         wheres = []
         for col in self.table.primary_key.columns:
@@ -601,9 +604,9 @@ class Table(metaclass=TableMeta, register=False):
             params[p] = history[col]["old"]
             wheres.append("{} = {}".format(col.quoted_name, session.bind.emit_param(p)))
 
-        base_query += " WHERE ({});".format(" AND ".join(wheres))
+        base_query.write(" WHERE ({});".format(" AND ".join(wheres)))
 
-        return base_query, params
+        return base_query.getvalue(), params
 
     def _get_delete_sql(self, emitter: typing.Callable[[], str], session: 'md_session.Session') \
             -> typing.Tuple[str, typing.Any]:
@@ -613,7 +616,8 @@ class Table(metaclass=TableMeta, register=False):
         if self._session is None:
             self._session = session
 
-        query = "DELETE FROM {} ".format(self.table.__quoted_name__)
+        query = io.StringIO()
+        query.write("DELETE FROM {} ".format(self.table.__quoted_name__))
         # generate the where clauses
         wheres = []
         params = {}
@@ -624,8 +628,8 @@ class Table(metaclass=TableMeta, register=False):
             params[name] = value
             wheres.append("{} = {}".format(col.quoted_fullname, session.bind.emit_param(name)))
 
-        query += "WHERE ({}) ".format(" AND ".join(wheres))
-        return query, params
+        query.write("WHERE ({}) ".format(" AND ".join(wheres)))
+        return query.getvalue(), params
 
     # value loading methods
     def _resolve_item(self, name: str):

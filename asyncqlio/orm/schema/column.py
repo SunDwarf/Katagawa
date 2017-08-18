@@ -88,12 +88,13 @@ class Column(object):
     def __init__(self, type_: 'typing.Union[md_types.ColumnType, typing.Type[md_types.ColumnType]]',
                  *,
                  primary_key: bool = False,
-                 nullable: bool = True,
+                 nullable: bool = False,
                  default: typing.Any = NO_DEFAULT,
                  autoincrement: bool = False,
                  index: bool = True,
                  unique: bool = False,
-                 foreign_key: 'md_relationship.ForeignKey' = None):
+                 foreign_key: 'md_relationship.ForeignKey' = None,
+                 table: 'md_table.Table' = None):
         """
         :param type_:
             The :class:`.ColumnType` that represents the type of this column.
@@ -125,7 +126,7 @@ class Column(object):
         self.name = None  # type: str
 
         #: The :class:`.Table` instance this Column is associated with.
-        self.table = None
+        self.table = table  # type: md_table.Table
 
         #: The :class:`.ColumnType` that represents the type of this column.
         self.type = type_  # type: md_types.ColumnType
@@ -190,6 +191,37 @@ class Column(object):
 
         # otherwise just return the attribute
         return i
+
+    # DDL stuff
+    @classmethod
+    def with_name(cls, name: str, *args, **kwargs):
+        """
+        Creates this column with a name already set.
+        """
+        col = cls(*args, **kwargs)
+        col.name = name
+        return col
+
+    def get_ddl_sql(self) -> str:
+        """
+        Gets the DDL SQL for this column.
+        """
+        base = "{} {}".format(self.name, self.type.sql())
+        if self.nullable:
+            base += " NULL"
+        else:
+            base += " NOT NULL"
+
+        if self.unique:
+            base += " UNIQUE"
+
+        if self.foreign_key is not None:
+            fk = self.foreign_key._ddl_split_fk()
+            base += " REFERENCES {0} ({1})".format(*fk)
+
+        return base
+
+    # Operators
 
     def __eq__(self, other: typing.Any) -> 'typing.Union[md_operators.Eq, bool]':
         # why is this here?

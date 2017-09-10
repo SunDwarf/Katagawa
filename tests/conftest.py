@@ -8,12 +8,10 @@ import pytest
 
 from asyncqlio import DatabaseInterface
 
-# set the iface as a global so it can be closed later
-iface = DatabaseInterface()
 
-
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 async def db() -> DatabaseInterface:
+    iface = DatabaseInterface()
     await iface.connect(dsn=os.environ["ASQL_DSN"])
     yield iface
     await iface.close()

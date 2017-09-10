@@ -15,11 +15,11 @@ iface = DatabaseInterface()
 @pytest.fixture(scope='module')
 async def db() -> DatabaseInterface:
     await iface.connect(dsn=os.environ["ASQL_DSN"])
-    return iface
+    yield iface
+    await iface.close()
 
 
 # override for a module scope
 @pytest.fixture(scope="module")
 def event_loop():
     return asyncio.get_event_loop()
-

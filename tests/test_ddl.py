@@ -1,5 +1,5 @@
 """
-Tests the low-level API.
+Tests methods of DDLSession.
 """
 
 import pytest

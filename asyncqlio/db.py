@@ -10,9 +10,7 @@ from asyncqlio.backends.base import BaseConnector, BaseDialect, BaseTransaction
 from asyncqlio.orm import session as md_session
 from asyncqlio.orm.ddl import ddlsession as md_ddlsession
 from asyncqlio.orm.schema import table as md_table
-
-# sentinels
-NO_CONNECTOR = object()
+from asyncqlio.sentinels import NO_CONNECTOR
 
 logger = logging.getLogger("asyncqlio")
 

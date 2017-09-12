@@ -53,9 +53,11 @@ class DDLSession(SessionBase):
 
         # join it all up
         # this uses spacing to prettify the generated SQL a bit
-        base.write("(\n    {}".format(",\n    ".join(column_fields)))
+        base.write("(\n    ")
+        base.write(",\n    ".join(column_fields))
         if pkey_text:
-            base.write(",\n    {}".format(pkey_text))
+            base.write(",\n    ")
+            base.write(pkey_text)
 
         base.write("\n);")
 

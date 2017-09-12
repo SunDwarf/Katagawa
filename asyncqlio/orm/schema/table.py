@@ -531,7 +531,9 @@ class Table(metaclass=TableMeta, register=False):
             self._session = session
 
         q = io.StringIO()
-        q.write("INSERT INTO {} ".format(self.table.__quoted_name__))
+        q.write("INSERT INTO ")
+        q.write(self.table.__quoted_name__)
+        q.write(" ")
         params = {}
         column_names = []
         sql_params = []
@@ -555,9 +557,11 @@ class Table(metaclass=TableMeta, register=False):
                 column_names.append(column.quoted_name)
                 sql_params.append(param_name)
 
-        q.write("({}) ".format(", ".join(column_names)))
-        q.write("VALUES ")
-        q.write("({}) ".format(", ".join(sql_params)))
+        q.write("(")
+        q.write(", ".join(column_names))
+        q.write(") VALUES (")
+        q.write(", ".join(sql_params))
+        q.write(") ")
         # check if we support RETURNS
         if session.bind.dialect.has_returns:
             columns_to_get = []
@@ -567,7 +571,8 @@ class Table(metaclass=TableMeta, register=False):
                 columns_to_get.append(column)
 
             to_return = ", ".join(column.quoted_name for column in columns_to_get)
-            q.write(" RETURNING {}".format(to_return))
+            q.write(" RETURNING ")
+            q.write(to_return)
 
         q.write(";")
         return q.getvalue(), params
@@ -581,7 +586,9 @@ class Table(metaclass=TableMeta, register=False):
 
         params = {}
         base_query = io.StringIO()
-        base_query.write("UPDATE {} SET ".format(self.table.__quoted_name__))
+        base_query.write("UPDATE ")
+        base_query.write(self.table.__quoted_name__)
+        base_query.write(" SET ")
         # the params to "set"
         sets = []
 
@@ -618,7 +625,9 @@ class Table(metaclass=TableMeta, register=False):
             params[p] = history[col]["old"]
             wheres.append("{} = {}".format(col.quoted_name, session.bind.emit_param(p)))
 
-        base_query.write(" WHERE ({});".format(" AND ".join(wheres)))
+        base_query.write(" WHERE (")
+        base_query.write(" AND ".join(wheres))
+        base_query.write(");")
 
         return base_query.getvalue(), params
 
@@ -631,7 +640,9 @@ class Table(metaclass=TableMeta, register=False):
             self._session = session
 
         query = io.StringIO()
-        query.write("DELETE FROM {} ".format(self.table.__quoted_name__))
+        query.write("DELETE FROM ")
+        query.write(self.table.__quoted_name__)
+        query.write(" ")
         # generate the where clauses
         wheres = []
         params = {}
@@ -642,7 +653,9 @@ class Table(metaclass=TableMeta, register=False):
             params[name] = value
             wheres.append("{} = {}".format(col.quoted_fullname, session.bind.emit_param(name)))
 
-        query.write("WHERE ({}) ".format(" AND ".join(wheres)))
+        query.write("WHERE (")
+        query.write(" AND ".join(wheres))
+        query.write(") ")
         return query.getvalue(), params
 
     # value loading methods

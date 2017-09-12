@@ -220,8 +220,12 @@ class Column(object):
             base.write(" UNIQUE")
 
         if self.foreign_key is not None:
-            fk = self.foreign_key._ddl_split_fk()
-            base.write(" REFERENCES {0} ({1})".format(*fk))
+            fk_table, fk_column = self.foreign_key._ddl_split_fk()
+            base.write(" REFERENCES ")
+            base.write(fk_table)
+            base.write(" (")
+            base.write(fk_column)
+            base.write(")")
 
         return base.getvalue()
 

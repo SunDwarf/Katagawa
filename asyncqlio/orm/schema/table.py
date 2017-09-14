@@ -378,6 +378,11 @@ class TableMeta(type):
         return None
 
     async def create(self):
+        """
+        Creates a table with this schema in the database.
+
+        You must have bound this table to a DatabaseInterface to use this.
+        """
         if getattr(self, "_bind", None) is None:
             raise RuntimeError("Must bind table before creating it.")
 
@@ -406,6 +411,17 @@ class TableMeta(type):
 
         async with self._bind.get_session() as session:
             await session.execute(sql.getvalue())
+
+    async def drop(self):
+        """
+        Drops this table, or a table with the same name, from the database.
+
+        You must have bound this table to a DatabaseInterface to use this.
+        """
+    if getattr(self, "_bind", None) is None:
+        raise RuntimeError("Must bind table before dropping it.")
+    async with self._bind.get_ddl_session() as sess:
+        await sess.drop_table(self.__tablename__)
 
     @property
     def primary_key(self) -> 'PrimaryKey':

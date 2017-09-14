@@ -418,10 +418,10 @@ class TableMeta(type):
 
         You must have bound this table to a DatabaseInterface to use this.
         """
-    if getattr(self, "_bind", None) is None:
-        raise RuntimeError("Must bind table before dropping it.")
-    async with self._bind.get_ddl_session() as sess:
-        await sess.drop_table(self.__tablename__)
+        if getattr(self, "_bind", None) is None:
+            raise RuntimeError("Must bind table before dropping it.")
+        async with self._bind.get_ddl_session() as sess:
+            await sess.drop_table(self.__tablename__)
 
     @property
     def primary_key(self) -> 'PrimaryKey':

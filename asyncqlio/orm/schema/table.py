@@ -377,6 +377,36 @@ class TableMeta(type):
 
         return None
 
+    async def create(self):
+        if getattr(self, "_bind", None) is None:
+            raise RuntimeError("Must bind table before creating it.")
+
+        sql = io.StringIO()
+        sql.write("CREATE TABLE ")
+        sql.write(self.__tablename__)
+
+        primary_key_columns = []
+        column_fields = []
+        relationship_fields = []
+
+        for column in self.iter_columns():
+            column_fields.append(column.get_ddl_sql())
+            if column.primary_key is True:
+                primary_key_columns.append(column)
+
+        sql.write("(\n    ")
+        sql.write(",\n    ".join(column_fields))
+
+        if primary_key_columns:
+            pkey_text = "PRIMARY KEY ({})".format(
+                ", ".join("{.name}".format(x) for x in primary_key_columns)
+            )
+            sql.write(",\n    {}".format(pkey_text))
+        sql.write("\n);")
+
+        async with self._bind.get_session() as session:
+            await session.execute(sql.getvalue())
+
     @property
     def primary_key(self) -> 'PrimaryKey':
         """

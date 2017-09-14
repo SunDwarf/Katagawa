@@ -52,19 +52,15 @@ class Index(object):
         """
         base = io.StringIO()
         col_names = ", ".join(column.name for column in self.columns)
-        base.write("CONSTRAINT ")
-        base.write(self.name)
-        if self.unique:
-            base.write(" UNIQUE")
-        base.write(" (")
-        base.write(col_names)
-        base.write(")\n    USING INDEX (CREATE")
+        base.write("CREATE ")
         if self.unique:
             base.write("UNIQUE ")
         base.write("INDEX ")
         base.write(self.name)
-        base.write(" ON (")
+        base.write(" ON ")
+        base.write(self.table.__tablename__)
+        base.write(" (")
         base.write(col_names)
-        base.write("))")
+        base.write(");")
 
         return base.getvalue()

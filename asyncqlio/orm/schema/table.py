@@ -9,7 +9,8 @@ from collections import OrderedDict
 from asyncqlio import db as md_db
 from asyncqlio.exc import SchemaError
 from asyncqlio.orm import inspection as md_inspection, session as md_session
-from asyncqlio.orm.schema import column as md_column, relationship as md_relationship
+from asyncqlio.orm.schema import column as md_column, relationship as md_relationship,\
+    index as md_index
 from asyncqlio.sentinels import NO_DEFAULT, NO_VALUE
 
 PY36 = sys.version_info[0:2] >= (3, 6)
@@ -202,6 +203,7 @@ class TableMeta(type):
         # hijack columns
         columns = OrderedDict()
         relationships = OrderedDict()
+        indexes = OrderedDict()
         for col_name, value in class_body.copy().items():
             if isinstance(value, md_column.Column):
                 columns[col_name] = value
@@ -210,9 +212,12 @@ class TableMeta(type):
             elif isinstance(value, md_relationship.Relationship):
                 relationships[col_name] = value
                 class_body.pop(col_name)
+            elif isinstance(value, md_index.Index):
+                indexes[col_name] = value
 
         class_body["_columns"] = columns
         class_body["_relationships"] = relationships
+        class_body["_indexes"] = indexes
 
         try:
             class_body["__tablename__"] = kwargs["table_name"]
@@ -240,7 +245,8 @@ class TableMeta(type):
 
         # emulate `__set_name__` on Python 3.5
         # also, set names on columns unconditionally
-        it = itertools.chain(self._columns.items(), self._relationships.items())
+        it = itertools.chain(self._columns.items(), self._relationships.items(),
+                             self._indexes.items())
         if not PY36:
             it = itertools.chain(class_body.items(), it)
 
@@ -257,6 +263,10 @@ class TableMeta(type):
 
         #: A dict of relationships for this table.
         self._relationships = self._relationships  # type: typing.Dict[str, md_relationship.Relationship]
+
+        #: A dict of indexes for this table.
+
+        self._indexes = self._indexes  # type: typing.Dict[str, md_index.Index]
 
         #: The primary key for this table.
         #: This should be a :class:`.PrimaryKey`.
@@ -355,6 +365,12 @@ class TableMeta(type):
         """
         try:
             return self._relationships[relationship_name]
+        except KeyError:
+            return None
+
+    def get_index(self, index_name) -> 'typing.Union[md_index.Index, None]':
+        try:
+            return self._indexes[index_name]
         except KeyError:
             return None
 

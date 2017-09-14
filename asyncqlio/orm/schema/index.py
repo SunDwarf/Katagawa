@@ -61,6 +61,6 @@ class Index(object):
         base.write(self.table.__tablename__)
         base.write(" (")
         base.write(col_names)
-        base.write(");")
+        base.write(")")
 
         return base.getvalue()

@@ -196,7 +196,7 @@ class TableMetadata(object):
         """
         for name, table in self.tables.items():
             # if we're connected, we can get the actual name of the primary key index
-            if self._bind is not None:
+            if self._bind.dialect is not None:
                 index_name = self._bind.dialect.get_primary_key_index_name(name)
             # otherwise, we just have to make one up
             else:
@@ -219,7 +219,10 @@ class TableMetadata(object):
             if isinstance(table, AliasedTable):
                 continue
             for column in table.iter_columns():
-                index_name = self._bind.dialect.get_unique_column_index_name(name, column.name)
+                if self._bind.dialect is not None:
+                    index_name = self._bind.dialect.get_unique_column_index_name(name, column.name)
+                else:
+                    index_name = "{}_{}_key".format(name, column.name)
                 if not index_name:
                     return
                 table._indexes[index_name] = md_index.Index.with_name(

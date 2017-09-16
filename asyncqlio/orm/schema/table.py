@@ -195,7 +195,12 @@ class TableMetadata(object):
         creates one.
         """
         for name, table in self.tables.items():
-            index_name = self._bind.dialect.get_primary_key_index_name(name)
+            # if we're connected, we can get the actual name of the primary key index
+            if self._bind is not None:
+                index_name = self._bind.dialect.get_primary_key_index_name(name)
+            # otherwise, we just have to make one up
+            else:
+                index_name = "idx_pk_{}".format(name)
             if not index_name:
                 return
             table._indexes[index_name] = md_index.Index.with_name(
@@ -475,14 +480,14 @@ class TableMeta(type):
                                     )
 
     @enforce_bound
-    async def drop(self, cascade: bool = False):
+    async def drop(self, if_exists: bool = True, cascade: bool = False):
         """
         Drops this table, or a table with the same name, from the database.
 
         :param cascade: If this drop should cascade.
         """
         async with self._bind.get_ddl_session() as sess:
-            await sess.drop_table(self.__tablename__, cascade=cascade)
+            await sess.drop_table(self.__tablename__, if_exists=if_exists, cascade=cascade)
 
     @property
     def primary_key(self) -> 'PrimaryKey':

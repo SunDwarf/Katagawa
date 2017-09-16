@@ -3,23 +3,6 @@
 Changelog
 =========
 
-0.3.0
------
-
- - Add new :class:`.Index` representing an index in a database
-
- - Add :meth:`.Table.create` to create tables from :class:`.Table` objects
-
- - Add :meth:`.Table.generate_schema` to create a representative Python class from the table
-
- - Add :meth:`DDLSession.get_indexes` to get :class:`.Index` objects from an existing database
-
- - Add :meth:`DDLSesion.create_index` to create an index on an existing database table
-
- - Support :class:`.Index` objects in :meth:`DDLSession.create_table`
-
- - Actually generate foreign keys upon table creation
-
 0.2.0
 -----
 
@@ -38,6 +21,20 @@ Changelog
  - Add :meth:`.BaseResultSet.flatten` to flatten a result set.
 
  - Fix the ``aiomysql`` connector to use ANSI sql mode.
+
+ - Add new :class:`.Index` representing an index in a database
+
+ - Add :meth:`.Table.create` to create tables from :class:`.Table` objects
+
+ - Add :meth:`.Table.generate_schema` to create a representative Python class from the table
+
+ - Add :meth:`DDLSession.get_indexes` to get :class:`.Index` objects from an existing database
+
+ - Add :meth:`DDLSesion.create_index` to create an index on an existing database table
+
+ - Support :class:`.Index` objects in :meth:`DDLSession.create_table`
+
+ - Actually generate foreign keys upon table creation
 
 0.1.0 (released 2017-07-30)
 ---------------------------

@@ -99,7 +99,7 @@ class DatabaseInterface(object):
         md.setup_tables()
         return md
 
-    async def connect(self, dsn: str = None, **kwargs) -> BaseConnector:
+    async def connect(self, **kwargs) -> BaseConnector:
         """
         Connects the interface to the database server.
 
@@ -109,8 +109,6 @@ class DatabaseInterface(object):
         :param dsn: The Data Source Name to connect to, if it was not specified in the constructor.
         :return: The :class:`~.BaseConnector` established.
         """
-        if dsn is not None:
-            self._dsn = dsn
         try:
             await self.connector.connect(**kwargs)
         except Exception:

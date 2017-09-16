@@ -189,21 +189,13 @@ class TableMetadata(object):
                         raise SchemaError("Could not resolve column '{}' - it did not match the "
                                           "left or right column!")
 
-    def _pk_idx_name(self, table_name: str) -> str:
-        return "idx_pk_{}".format(table_name)
-
     def generate_primary_key_indexes(self):
         """
         Generates an index for the primary key of each table, if the dialect
         creates one.
         """
         for name, table in self.tables.items():
-            # if we're connected, we can get the actual name of the primary key index
-            if self._bind.dialect is not None:
-                index_name = self._bind.dialect.get_primary_key_index_name(name)
-            # otherwise, we just have to make one up
-            else:
-                index_name = self._pk_idx_name(name)
+            index_name = self._bind.dialect.get_primary_key_index_name(name)
             if not index_name:
                 return
             table._indexes[index_name] = md_index.Index.with_name(
@@ -212,9 +204,6 @@ class TableMetadata(object):
                 table_name=name,
             )
             table._primary_key.index_name = index_name
-
-    def _unique_col_idx_name(self, name: str, column_name: str) -> str:
-        return "{}_{}_key".format(name, column_name)
 
     def generate_unique_column_indexes(self):
         """
@@ -225,10 +214,7 @@ class TableMetadata(object):
             if isinstance(table, AliasedTable):
                 continue
             for column in table.iter_columns():
-                if self._bind.dialect is not None:
-                    index_name = self._bind.dialect.get_unique_column_index_name(name, column.name)
-                else:
-                    index_name = self._unique_col_idx_name(name, column.name)
+                index_name = self._bind.dialect.get_unique_column_index_name(name, column.name)
                 if not index_name:
                     return
                 table._indexes[index_name] = md_index.Index.with_name(
@@ -402,15 +388,10 @@ class TableMeta(type):
         for index in self.iter_indexes():
             if index.table_name != table_name:
                 continue
-            pkey_names = (self._bind.dialect.get_primary_key_index_name(table_name),
-                          self.metadata._pk_idx_name(table_name))
-            if index.name in pkey_names:
+            if index.name == self._bind.dialect.get_primary_key_index_name(table_name):
                 continue
-            unique_name_funcs = (self._bind.dialect.get_unique_column_index_name,
-                                 self.metadata._unique_col_idx_name)
-            unique_names = []
-            for col_name in index.get_column_names():
-                unique_names.extend(func(table_name, col_name) for func in unique_name_funcs)
+            unique_names = (self._bind.dialect.get_unique_column_index_name(table_name, col_name)
+                            for col_name in index.get_column_names())
             if index.name in unique_names:
                 continue
             yield index

@@ -483,11 +483,12 @@ class TableMeta(type):
                                     )
 
     @enforce_bound
-    async def drop(self, if_exists: bool = True, cascade: bool = False):
+    async def drop(self, *, cascade: bool = False, if_exists: bool = True):
         """
         Drops this table, or a table with the same name, from the database.
 
         :param cascade: If this drop should cascade.
+        :param if_exists: If this is true, we won't complain if the table doesn't exist.
         """
         async with self._bind.get_ddl_session() as sess:
             await sess.drop_table(self.__tablename__, if_exists=if_exists, cascade=cascade)

@@ -2,6 +2,7 @@
 The main Database object. This is the "database interface" to the actual DB server.
 """
 import asyncio
+import functools
 import importlib
 import logging
 from urllib.parse import ParseResult, urlparse
@@ -66,10 +67,11 @@ class DatabaseInterface(object):
         logger.debug("Loading connector {}".format(mod_path))
 
         connector_mod = importlib.import_module(mod_path)
-        connector_ins = connector_mod.CONNECTOR_TYPE(
-            parsed_dsn, loop=self.loop
-        )  # type: BaseConnector
-        self.connector = connector_ins  # type: BaseConnector
+        self._get_connector = functools.partial(
+            connector_mod.CONNECTOR_TYPE,
+            parsed_dsn
+        )
+        self.connector = None  # type: BaseConnector
 
     async def __aenter__(self):
         if not self.connected:
@@ -109,6 +111,7 @@ class DatabaseInterface(object):
         :param dsn: The Data Source Name to connect to, if it was not specified in the constructor.
         :return: The :class:`~.BaseConnector` established.
         """
+        self.connector = self._get_connector(loop=self.loop)
         try:
             await self.connector.connect(**kwargs)
         except Exception:

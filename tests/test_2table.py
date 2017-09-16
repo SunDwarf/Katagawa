@@ -23,8 +23,8 @@ person_body = '''class Person(Table):
     ssn = Column(Integer(), unique=True)
     name = Column(String(128))
     age = Column(Integer())
-    person_idx_name = Index(name)
-    person_idx_age = Index(age)
+    person_name_idx = Index(name)
+    person_age_idx = Index(age)
     cars = Relationship(left="Person.id", right="Car.owner_id")
 '''
 
@@ -35,8 +35,8 @@ car_body = '''class Car(Table):
     make = Column(String(32))
     model = Column(String(32))
     year = Column(Integer())
-    car_idx_make_model = Index(make, model)
-    car_idx_year = Index(year)
+    car_make_model_idx = Index(make, model)
+    car_year_idx = Index(year)
 '''
 
 class_bodies = [person_body, car_body]

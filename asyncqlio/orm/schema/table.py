@@ -189,6 +189,9 @@ class TableMetadata(object):
                         raise SchemaError("Could not resolve column '{}' - it did not match the "
                                           "left or right column!")
 
+    def _pk_idx_name(self, table_name: str) -> str:
+        return "idx_pk_{}".format(table_name)
+
     def generate_primary_key_indexes(self):
         """
         Generates an index for the primary key of each table, if the dialect
@@ -200,7 +203,7 @@ class TableMetadata(object):
                 index_name = self._bind.dialect.get_primary_key_index_name(name)
             # otherwise, we just have to make one up
             else:
-                index_name = "idx_pk_{}".format(name)
+                index_name = self._pk_idx_name(name)
             if not index_name:
                 return
             table._indexes[index_name] = md_index.Index.with_name(
@@ -209,6 +212,9 @@ class TableMetadata(object):
                 table_name=name,
             )
             table._primary_key.index_name = index_name
+
+    def _unique_col_idx_name(self, name: str, column_name: str) -> str:
+        return "{}_{}_key".format(name, column_name)
 
     def generate_unique_column_indexes(self):
         """
@@ -222,7 +228,7 @@ class TableMetadata(object):
                 if self._bind.dialect is not None:
                     index_name = self._bind.dialect.get_unique_column_index_name(name, column.name)
                 else:
-                    index_name = "{}_{}_key".format(name, column.name)
+                    index_name = self._unique_col_idx_name(name, column.name)
                 if not index_name:
                     return
                 table._indexes[index_name] = md_index.Index.with_name(
@@ -392,14 +398,20 @@ class TableMeta(type):
         Only manually added indexes are yielded from this generator; that is, it
         ignores primary key indexes, unique column indexes, relationship indexes, etc
         """
-        unique_idx_name = self._bind.dialect.get_unique_column_index_name
-        pkey_name = self._bind.dialect.get_primary_key_index_name
+        table_name = self.__tablename__
         for index in self.iter_indexes():
-            if index.name == pkey_name(self.__tablename__):
+            if index.table_name != table_name:
                 continue
-            elif index.name == unique_idx_name(self.__tablename__, next(index.get_column_names())):
+            pkey_names = (self._bind.dialect.get_primary_key_index_name(table_name),
+                          self.metadata._pk_idx_name(table_name))
+            if index.name in pkey_names:
                 continue
-            elif index.table_name != self.__tablename__:
+            unique_name_funcs = (self._bind.dialect.get_unique_column_index_name,
+                                 self.metadata._unique_col_idx_name)
+            unique_names = []
+            for col_name in index.get_column_names():
+                unique_names.extend(func(table_name, col_name) for func in unique_name_funcs)
+            if index.name in unique_names:
                 continue
             yield index
 

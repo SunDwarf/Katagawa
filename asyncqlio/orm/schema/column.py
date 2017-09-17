@@ -130,6 +130,9 @@ class Column(object):
         if not isinstance(self.type, md_types.ColumnType):
             # assume we need to create the "default" type
             self.type = self.type.create_default()  # type: md_types.ColumnType
+
+        self.autoincrement = isinstance(self.type, md_types.Serial)
+
         # update our own object on the column
         self.type.column = self
 

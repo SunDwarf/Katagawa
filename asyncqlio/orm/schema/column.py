@@ -91,7 +91,6 @@ class Column(object):
                  primary_key: bool = False,
                  nullable: bool = False,
                  default: typing.Any = NO_DEFAULT,
-                 autoincrement: bool = False,
                  index: bool = True,
                  unique: bool = False,
                  foreign_key: 'md_relationship.ForeignKey' = None,
@@ -109,9 +108,6 @@ class Column(object):
         :param default:
             The client-side default for this column. If no value is provided when inserting, this
             value will automatically be added to the insert query.
-
-        :param autoincrement:
-            Should this column auto-increment? This will create a serial sequence.
 
         :param index:
             Should this column be indexed?
@@ -145,9 +141,6 @@ class Column(object):
 
         #: If this Column is nullable.
         self.nullable = nullable
-
-        #: If this Column is to autoincrement.
-        self.autoincrement = autoincrement
 
         #: If this Column is indexed.
         self.indexed = index

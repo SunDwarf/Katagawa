@@ -19,42 +19,19 @@ table_name = "test"
 
 
 async def get_num_indexes(db: DatabaseInterface) -> int:
-    if isinstance(db.dialect, postgresql.PostgresqlDialect):
-        query = ("select count(*) from pg_indexes where tablename = {}"
-                 .format(db.connector.emit_param("table_name")))
-    elif isinstance(db.dialect, mysql.MysqlDialect):
-        query = ("select count(*) from information_schema.statistics where "
-                 "table_schema in (select database() from dual)")
-    elif isinstance(db.dialect, sqlite3.Sqlite3Dialect):
-        # add one to pretend that the primary key is inexed like every other driver
-        query = ("select count(*) from sqlite_master where type = 'index' AND tbl_name = {}"
-                 .format(db.connector.emit_param("table_name")))
-    else:
-        raise RuntimeError
-    params = {"table_name": table_name}
-    async with db.get_session() as sess:
-        res = await sess.fetch(query, params)
-    return next(iter(res.values()))
+    count = 0
+    async with db.get_ddl_session() as sess:
+        for _ in await sess.get_indexes(table_name):
+            count += 1
+    return count
 
 
 async def get_num_columns(db: DatabaseInterface) -> int:
-
-    if isinstance(db.dialect, sqlite3.Sqlite3Dialect):
-        count = 0
-        async with db.get_session() as sess:
-            query = "pragma table_info('{}')".format(table_name)
-            async for row in await sess.cursor(query):
-                count += 1
-        return count
-    if isinstance(db.dialect, (postgresql.PostgresqlDialect, mysql.MysqlDialect)):
-        query = ("select count(*) from information_schema.columns where table_name={}"
-                 .format(db.connector.emit_param("table_name")))
-    else:
-        raise RuntimeError
-    params = {"table_name": table_name}
-    async with db.get_session() as sess:
-        res = await sess.fetch(query, params)
-    return next(iter(res.values()))
+    count = 0
+    async with db.get_ddl_session() as sess:
+        for _ in await sess.get_columns(table_name):
+            count += 1
+    return count
 
 
 async def test_create_table(db: DatabaseInterface):

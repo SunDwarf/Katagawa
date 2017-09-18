@@ -79,7 +79,7 @@ class Sqlite3Dialect(BaseDialect):
             elif psql_type == "TEXT":
                 real_type = md_types.Text
             elif psql_type.startswith("VARCHAR"):
-                size = int(psql_type[psql_type.index('(') + 1:-1])
+                size = int(psql_type[psql_type.index("(") + 1:-1])
                 real_type = md_types.String(size)
             elif psql_type == "SMALLINT":
                 real_type = md_types.SmallInt
@@ -110,6 +110,10 @@ class Sqlite3Dialect(BaseDialect):
             sql = row["sql"]
             if sql is None:
                 continue
-            columns = find_col_expr.match(sql).groups()[0]
-            columns = (name.trim() for name in columns.split(','))
-            yield Index.with_name(name, *columns, table=table)
+            match = find_col_expr.match(sql)
+            if match is not None:
+                columns = match.groups()[0]
+                columns = (name.trim() for name in columns.split(","))
+            else:
+                columns = ()
+            yield md_index.Index.with_name(name, *columns, table=table)

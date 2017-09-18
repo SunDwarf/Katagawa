@@ -53,3 +53,29 @@ class Proxy(object):
 
     def __getattr__(self, item):
         return getattr(self.obb, item)
+
+
+def separate_statements(sql: str) -> str:
+    """
+    Separates a SQL script into individual statements.
+    """
+    start = 0
+    quoted = False
+    sql += " "  # padding to avoid IndexErrors
+
+    for idx, char in enumerate(sql):
+        if not quoted:
+            if char == ";":
+                stmt = sql[start:idx].strip()
+                if stmt:
+                    yield stmt
+                start = idx + 1
+            quoted = char == "'"
+
+        else:
+            if char == "'" and sql[idx + 1] != "'":
+                    quoted = False
+
+    stmt = sql[start:-1].strip()
+    if stmt:
+        yield stmt

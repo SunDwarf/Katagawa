@@ -59,7 +59,7 @@ def separate_statements(sql: str) -> str:
     """
     Separates a SQL script into individual statements.
     """
-    start = 0
+    start = idx =0
     quoted = False
     sql = " {} ".format(sql)  # padding to avoid IndexErrors
     while idx < len(sql):

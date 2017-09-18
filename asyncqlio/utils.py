@@ -61,9 +61,9 @@ def separate_statements(sql: str) -> str:
     """
     start = 0
     quoted = False
-    sql += " "  # padding to avoid IndexErrors
-
-    for idx, char in enumerate(sql):
+    sql = " {} ".format(sql)  # padding to avoid IndexErrors
+    while idx < len(sql):
+        char = sql[idx]
         if not quoted:
             if char == ";":
                 stmt = sql[start:idx].strip()
@@ -73,8 +73,12 @@ def separate_statements(sql: str) -> str:
             quoted = char == "'"
 
         else:
-            if char == "'" and sql[idx + 1] != "'":
+            if char == "'":
+                if sql[idx + 1] == "'":
+                    idx += 1
+                else:
                     quoted = False
+        idx += 1
 
     stmt = sql[start:-1].strip()
     if stmt:

@@ -25,6 +25,10 @@ async def get_num_indexes(db: DatabaseInterface) -> int:
     elif isinstance(db.dialect, mysql.MysqlDialect):
         query = ("select count(*) from information_schema.statistics where "
                  "table_schema in (select database() from dual)")
+    elif isinstance(db.dialect, sqlite3.Sqlite3Dialect):
+        # add one to pretend that the primary key is inexed like every other driver
+        query = ("select count(*) from sqlite_master where type = 'index' AND tbl_name = {}"
+                 .format(db.connector.emit_param("table_name")))
     else:
         raise RuntimeError
     params = {"table_name": table_name}
@@ -34,6 +38,14 @@ async def get_num_indexes(db: DatabaseInterface) -> int:
 
 
 async def get_num_columns(db: DatabaseInterface) -> int:
+
+    if isinstance(db.dialect, sqlite3.Sqlite3Dialect):
+        count = 0
+        async with db.get_session() as sess:
+            query = "pragma table_info('{}')".format(table_name)
+            async for row in await sess.cursor(query):
+                count += 1
+        return count
     if isinstance(db.dialect, (postgresql.PostgresqlDialect, mysql.MysqlDialect)):
         query = ("select count(*) from information_schema.columns where table_name={}"
                  .format(db.connector.emit_param("table_name")))
@@ -80,15 +92,23 @@ async def test_alter_column_type(db: DatabaseInterface):
 
 
 async def test_create_index(db: DatabaseInterface):
+    if isinstance(db.dialect, sqlite3.Sqlite3Dialect):
+        num_indexes = 1  # sqlite3 does't index primary keys
+    else:
+        num_indexes = 2
     async with db.get_ddl_session() as sess:
         await sess.create_index(table_name, "balance", "index_balance")
-    assert await get_num_indexes(db) == 2  # one exists for id already
+    assert await get_num_indexes(db) == num_indexes
 
 
 async def test_create_unique_index(db: DatabaseInterface):
+    if isinstance(db.dialect, sqlite3.Sqlite3Dialect):
+        num_indexes = 2  # sqlite3 does't index primary keys
+    else:
+        num_indexes = 3
     async with db.get_ddl_session() as sess:
         await sess.create_index(table_name, "age", "index_age", unique=True)
-    assert await get_num_indexes(db) == 3
+    assert await get_num_indexes(db) == num_indexes
     fmt = "insert into {} values ({{}}, 20, 10);".format(table_name)
     async with db.get_session() as sess:
         await sess.execute(fmt.format(100))

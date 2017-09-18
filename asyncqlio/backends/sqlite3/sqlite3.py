@@ -9,6 +9,7 @@ import typing
 from asyncio_extras import threadpool
 
 from asyncqlio.backends.base import BaseConnector, BaseResultSet, BaseTransaction, DictRow
+from asyncqlio.exc import DatabaseException, IntegrityError
 
 logger = logging.getLogger(__name__)
 
@@ -137,15 +138,20 @@ class Sqlite3Transaction(BaseTransaction):
         # lock to ensure nothing else is using the connection at once
 
         logger.debug("Running SQL {} with params {}".format(sql, params))
+        for stmt in sql.split(';'):
+            async with self._lock:
+                async with threadpool():
+                    try:
+                        if params is None:
+                            res = self.connection.execute(stmt)
+                        else:
+                            res = self.connection.execute(stmt, params)
+                    except sqlite3.IntegrityError as e:
+                        raise IntegrityError(*e.args)
+                    except sqlite3.OperationalError as e:
+                        raise DatabaseException(*e.args)
 
-        async with self._lock:
-            async with threadpool():
-                if params is None:
-                    res = self.connection.execute(sql)
-                else:
-                    res = self.connection.execute(sql, params)
-
-        return res
+            return res
 
     async def commit(self):
         """
@@ -190,7 +196,13 @@ class Sqlite3Transaction(BaseTransaction):
         async with self._lock:
             async with threadpool():
                 cur = self.connection.cursor()
-                cur.execute(sql, params)
+                try:
+                    if params is None:
+                        cur.execute(sql)
+                    else:
+                        cur.execute(sql, params)
+                except sqlite3.OperationalError as e:
+                    raise DatabaseException(*e.args)
 
         return Sqlite3ResultSet(cur)
 

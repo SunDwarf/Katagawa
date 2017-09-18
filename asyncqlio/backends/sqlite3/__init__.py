@@ -14,6 +14,7 @@ DEFAULT_CONNECTOR = "sqlite3"
 
 find_col_expr = re.compile(r"\((.*)\)")
 
+
 class Sqlite3Dialect(BaseDialect):
     """
     The dialect for sqlite3.
@@ -96,7 +97,7 @@ class Sqlite3Dialect(BaseDialect):
             yield md_column.Column.with_name(
                 name=column_name,
                 type_=real_type,
-                table_name=table_name,
+                table=table_name,
                 nullable=nullable,
                 default=default,
                 primary_key=primary_key,
@@ -111,4 +112,4 @@ class Sqlite3Dialect(BaseDialect):
                 continue
             columns = find_col_expr.match(sql).groups()[0]
             columns = (name.trim() for name in columns.split(','))
-            yield Index.with_name(name, *columns, table_name=table)
+            yield Index.with_name(name, *columns, table=table)

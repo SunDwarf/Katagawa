@@ -126,7 +126,7 @@ FROM information_schema.columns
             yield md_column.Column.with_name(
                 name=column_name,
                 type_=real_type(),
-                table_name=table_name,
+                table=table_name,
                 nullable=nullable,
                 default=default,
                 primary_key=primary_key,
@@ -137,5 +137,5 @@ FROM information_schema.columns
             groups = idx_regex.match(row["indexdef"]).groups()
             unique, name, table, columns = groups
             columns = columns.split(', ')
-            index = md_index.Index.with_name(name, *columns, table_name=table, unique=unique)
+            index = md_index.Index.with_name(name, *columns, table=table, unique=unique)
             yield index

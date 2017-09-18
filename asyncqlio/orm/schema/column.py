@@ -176,7 +176,6 @@ class Column(object):
         logger.debug("Column created with name {} on {}".format(name, owner))
         self.name = name
         self.table = owner
-        self.table_name = owner.__tablename__
 
     def __getattr__(self, item):
         # try and get it from the columntype
@@ -194,16 +193,23 @@ class Column(object):
         # otherwise just return the attribute
         return i
 
+    @property
+    def table_name(self) -> str:
+        """
+        The name of this column's table.
+        """
+        if isinstance(self.table, str):
+            return self.table
+        return self.table.__tablename__
+
     # DDL stuff
     @classmethod
-    def with_name(cls, name: str, *args, table_name: str = None, **kwargs) -> 'Column':
+    def with_name(cls, name: str, *args, **kwargs) -> 'Column':
         """
         Creates this column with a name already set.
         """
         col = cls(*args, **kwargs)
         col.name = name
-        col.table_name = table_name
-        col.table = None
         return col
 
     def get_ddl_sql(self) -> str:

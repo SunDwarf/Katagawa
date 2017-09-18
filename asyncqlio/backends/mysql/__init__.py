@@ -100,7 +100,7 @@ class MysqlDialect(BaseDialect):
             yield md_column.Column.with_name(
                 name=column_name,
                 type_=real_type(),
-                table_name=table_name,
+                table=table_name,
                 nullable=nullable,
                 default=default,
                 primary_key=primary_key,
@@ -113,7 +113,5 @@ class MysqlDialect(BaseDialect):
                 columns.append(row["COLUMN_NAME"])
             unique = not row["NON_UNIQUE"]
             table = row["TABLE_NAME"]
-            index = md_index.Index.with_name(name, *columns, table_name=table, unique=unique)
-            index.table_name = table
-            index.table = None
+            index = md_index.Index.with_name(name, *columns, table=table, unique=unique)
             yield index

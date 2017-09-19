@@ -22,6 +22,8 @@ Changelog
 
  - Fix the ``aiomysql`` connector to use ANSI sql mode.
 
+ - Add Serial, BigSerial, and SmallSerial types to support automatic incrementation
+
 0.1.0 (released 2017-07-30)
 ---------------------------
 

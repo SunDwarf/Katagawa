@@ -307,6 +307,24 @@ class Serial(Integer):
         return "SERIAL"
 
 
+class BigSerial(Serial, BigInt):
+    """
+    Represents a BIGSERIAL type.
+    """
+
+    def sql(self):
+        return "BIGSERIAL"
+
+
+class SmallSerial(Serial, SmallInt):
+    """
+    Represents a SMALLSERIAL type.
+    """
+
+    def sql(self):
+        return "SMALLSERIAL"
+
+
 class Real(ColumnType):
     """
     Represents a REAL type.

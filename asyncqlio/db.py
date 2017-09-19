@@ -109,7 +109,6 @@ class DatabaseInterface(object):
         .. note::
             For SQLite3 connections, this will just open the database for reading.
 
-        :param dsn: The Data Source Name to connect to, if it was not specified in the constructor.
         :return: The :class:`~.BaseConnector` established.
         """
         self.connector = self._connector_type(self._parsed_dsn, loop=self.loop)

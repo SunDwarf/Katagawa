@@ -6,6 +6,7 @@ import io
 
 from cached_property import cached_property
 
+from asyncqlio.backends import sqlite3
 from asyncqlio.meta import proxy_to_getattr
 from asyncqlio.orm import operators as md_operators
 from asyncqlio.orm.schema import relationship as md_relationship, table as md_table, \
@@ -131,8 +132,6 @@ class Column(object):
             # assume we need to create the "default" type
             self.type = self.type.create_default()  # type: md_types.ColumnType
 
-        self.autoincrement = isinstance(self.type, md_types.Serial)
-
         # update our own object on the column
         self.type.column = self
 
@@ -197,6 +196,15 @@ class Column(object):
         if isinstance(self.table, str):
             return self.table
         return self.table.__tablename__
+
+    @property
+    def autoincrement(self) -> str:
+        """
+        Whether this column is set to autoincrement.
+        """
+        if isinstance(self.table.metadata._bind.dialect, sqlite3.Sqlite3Dialect):
+            return self.primary_key and isinstance(self.type, md_types.Integer)
+        return isinstance(self.type, md_types.Serial)
 
     # DDL stuff
     @classmethod

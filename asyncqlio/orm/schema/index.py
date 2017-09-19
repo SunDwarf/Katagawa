@@ -20,9 +20,11 @@ class Index(object):
 
     """
     def __init__(self, *columns: 'typing.Union[md_column.Column, str]',
-                 unique: bool = False):
+                 unique: bool = False,
+                 table: 'md_table.Table' = None):
         self.columns = columns
         self.unique = unique
+        self.table = table
 
     def __repr__(self):
         return "<Index table={} columns={} name={}>".format(self.table_name, self.columns, self.name)
@@ -38,7 +40,6 @@ class Index(object):
         :param name: The str name of this table.
         """
         self.table = owner
-        self.table_name = owner.__tablename__
         if name.startswith(self.table_name):
             self.name = name
         else:
@@ -52,15 +53,22 @@ class Index(object):
             else:
                 yield column.name
 
+    @property
+    def table_name(self) -> str:
+        """
+        The name of this index's table.
+        """
+        if isinstance(self.table, str):
+            return self.table
+        return self.table.__tablename__
+
     @classmethod
-    def with_name(cls, name: str, *args, table_name: str = None, **kwargs) -> 'Index':
+    def with_name(cls, name: str, *args, **kwargs) -> 'Index':
         """
         Creates this column with a name and, optionally, table name alrady set.
         """
         idx = cls(*args, **kwargs)
         idx.name = name
-        idx.table_name = table_name
-        idx.table = None
         return idx
 
     def get_ddl_sql(self) -> str:

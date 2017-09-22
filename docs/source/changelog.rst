@@ -35,9 +35,11 @@ Changelog
  - Support :class:`.Index` objects in :meth:`.DDLSession.create_table`.
 
  - Actually generate foreign keys upon table creation.
- 
+
  - Add :class:`.Serial`, :class:`.BigSerial`, and :class:`.SmallSerial` types to support automatic
      incrementation
+
+ - Add UpsertQuery and associated functions to make it work
 
 
 0.1.0 (released 2017-07-30)

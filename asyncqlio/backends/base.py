@@ -102,6 +102,7 @@ class BaseDialect:
         """
         Get a formattable query and a set of required params to execute upsert-like functionality
         """
+        raise NotImplementedError
 
     def transform_columns_to_indexes(self, *rows: 'DictRow', table_name: str):
         """

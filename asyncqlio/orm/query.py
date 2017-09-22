@@ -522,6 +522,9 @@ class InsertQuery(BaseQuery):
         self.rows_to_insert.append(row)
         return self
 
+    def on_conflict(self, column: 'md_column.Column') -> 'InsertQuery':
+        return UpsertQuery(self.session, column, *self.rows_to_insert)
+
     def generate_sql(self) -> typing.List[typing.Tuple[str, tuple]]:
         """
         Generates the SQL statements for this insert query.
@@ -537,6 +540,50 @@ class InsertQuery(BaseQuery):
 
         for row in self.rows_to_insert:
             query, params = row._get_insert_sql(emit, self.session)
+            queries.append((query, params))
+
+        return queries
+
+
+class UpsertQuery(InsertQuery):
+    def __init__(self, sess: 'md_session.Session', column: 'md_column.Column',
+                 *rows: 'md_table.Table'):
+        super().__init__(sess)
+
+        self._on_conflict_update = False
+        self._conflict_col = column
+        self._update_cols = ()
+        self.rows_to_insert = list(rows)
+
+    def update(self, *cols: 'md_column.Column') -> 'UpsertQuery':
+        self._on_conflict_update = True
+        self._update_cols = cols
+        return self
+
+    def nothing(self) -> 'UpsertQuery':
+        return self
+
+    def generate_sql(self) -> typing.List[typing.Tuple[str, tuple]]:
+        """
+        Generates the SQL statements for this upsert query.
+
+        This will return a list of two-item tuples to execute:
+            - The SQL query+params to emit to actually insert the row
+        """
+        queries = []
+        counter = itertools.count()
+
+        def emit():
+            return "param_{}".format(next(counter))
+
+        for row in self.rows_to_insert:
+            query, params = row._get_upsert_sql(
+                emit,
+                self.session,
+                *self._update_cols,
+                on_conflict_column=self._conflict_col,
+                on_conflict_update=self._on_conflict_update,
+                )
             queries.append((query, params))
 
         return queries

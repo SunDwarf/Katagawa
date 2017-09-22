@@ -97,6 +97,12 @@ class BaseDialect:
         """
         raise NotImplementedError
 
+    def get_upsert_sql(self, table_name: str,
+                       *, on_conflict_update: bool=True) -> 'typing.Tuple[str, set]':
+        """
+        Get a formattable query and a set of required params to execute upsert-like functionality
+        """
+
     def transform_columns_to_indexes(self, *rows: 'DictRow', table_name: str):
         """
         Transform appropriate database rows to Column objects.

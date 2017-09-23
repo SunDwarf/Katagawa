@@ -742,7 +742,7 @@ class Table(metaclass=TableMeta, register=False):
         """
         Gets the UPSERT sql for this row.
         :param session: The :class:`.Session` whose dialect to use when creating the SQL.
-        :param update_columns: The :class:`.Column`s to update on conflict.
+        :param update_columns: The :class:`.Column` objects to update on conflict.
         :param on_conflict_column: The :class:`.Column` on which there may be a conflict.
         :param on_conflict_update: Whether to update the table on conflict.
         """

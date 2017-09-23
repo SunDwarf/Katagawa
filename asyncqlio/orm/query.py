@@ -565,8 +565,8 @@ class UpsertQuery(InsertQuery):
 
     def update(self, *cols: 'md_column.Column') -> 'UpsertQuery':
         """
-        Specify which :class:`.Column` objects to update on an ID conflict
-        :param cols: The :class:`.Column` objects to update on conflict.
+        Used to specify which :class:`.Column` objects to update on a conflict.
+        :param cols: The :class:`.Column` objects to update.
         """
         self._on_conflict_update = True
         self._update_cols = cols

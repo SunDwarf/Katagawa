@@ -762,7 +762,7 @@ class Table(metaclass=TableMeta, register=False):
 
         col_names = ", ".join(col.quoted_name for col in row_dict.keys())
 
-        for fmt_param in fmt_params:
+        for fmt_param in needed_params:
             if fmt_param == "where":
                 param = emitter()
                 fmt_params["where"] = "{}={}".format(on_conflict_column.quoted_fullname,

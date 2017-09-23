@@ -39,7 +39,7 @@ Changelog
  - Add :class:`.Serial`, :class:`.BigSerial`, and :class:`.SmallSerial` types to support automatic
      incrementation
 
- - Add UpsertQuery and associated functions to make it work
+ - Add :class:`.UpsertQuery`
 
 
 0.1.0 (released 2017-07-30)

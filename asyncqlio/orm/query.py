@@ -556,6 +556,11 @@ class UpsertQuery(InsertQuery):
     """
     def __init__(self, sess: 'md_session.Session', column: 'md_column.Column',
                  *rows: 'md_table.Table'):
+        """
+        :param sess: The :class:`.Session` this query is attached to.
+        :param column: The :class:`.Column` on which the conflict might happen.
+        :param rows: The :class:`.Table` objects that are to be added.
+        """
         super().__init__(sess)
 
         self._on_conflict_update = False
@@ -566,6 +571,7 @@ class UpsertQuery(InsertQuery):
     def update(self, *cols: 'md_column.Column') -> 'UpsertQuery':
         """
         Used to specify which :class:`.Column` objects to update on a conflict.
+
         :param cols: The :class:`.Column` objects to update.
         """
         self._on_conflict_update = True

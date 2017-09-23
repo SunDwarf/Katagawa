@@ -469,7 +469,7 @@ class TableMeta(type):
         Creates a table with this schema in the database.
         """
         async with self._bind.get_ddl_session() as sess:
-            await sess.create_table(self.__quoted_name__,
+            await sess.create_table(self.__tablename__,
                                     *self.iter_columns(),
                                     *self.explicit_indexes(),
                                     if_not_exists=if_not_exists,
@@ -741,43 +741,53 @@ class Table(metaclass=TableMeta, register=False):
                         on_conflict_update: bool):
         """
         Gets the UPSERT sql for this row.
+        :param session: The :class:`.Session` whose dialect to use when creating the SQL.
+        :param update_columns: The :class:`.Column`s to update on conflict.
+        :param on_conflict_column: The :class:`.Column` on which there may be a conflict.
+        :param on_conflict_update: Whether to update the table on conflict.
         """
         params = {}
-        fmt, fmt_params = session.bind.dialect.get_upsert_sql(
+        fmt_params = {}
+        row_dict = {}
+
+        fmt, needed_params = session.bind.dialect.get_upsert_sql(
             self.table.__quoted_name__,
             on_conflict_update=on_conflict_update,
         )
-        fmt_params = {k: None for k in fmt_params}
 
-        if "where" in fmt_params:
-            param = emitter()
-            fmt_params["where"] = "{}={}".format(on_conflict_column.quoted_fullname,
-                                                 session.bind.emit_param(param))
-            params[param] = self.get_column_value(on_conflict_column)
-
-        row_dict = {}
         for column in type(self).iter_columns():
             param = emitter()
             params[param] = self.get_column_value(column)
             row_dict[column] = session.bind.emit_param(param)
 
-        if "update" in fmt_params:
-            fmt_params["update"] = ", ".join("{}={}".format(col.quoted_name, param)
-                                             for col, param in row_dict.items()
-                                             if col in update_columns)
-
         col_names = ", ".join(col.quoted_name for col in row_dict.keys())
-        if "returning" in fmt_params:
-            fmt_params["returning"] = col_names
 
-        if "insert" in fmt_params:
-            fmt_params["insert"] = "({}) VALUES ({})".format(
-                col_names,
-                ", ".join(row_dict.values()),
-            )
+        for fmt_param in fmt_params:
+            if fmt_param == "where":
+                param = emitter()
+                fmt_params["where"] = "{}={}".format(on_conflict_column.quoted_fullname,
+                                                     session.bind.emit_param(param))
+                params[param] = self.get_column_value(on_conflict_column)
 
-        if "col" in fmt_params:
-            fmt_params["col"] = on_conflict_column.quoted_name
+            elif fmt_param == "update":
+                fmt_params["update"] = ", ".join("{}={}".format(col.quoted_name, param)
+                                                 for col, param in row_dict.items()
+                                                 if col in update_columns)
+
+            elif fmt_param == "returning":
+                fmt_params["returning"] = col_names
+
+            elif fmt_param == "insert":
+                fmt_params["insert"] = "({}) VALUES ({})".format(
+                    col_names,
+                    ", ".join(row_dict.values()),
+                )
+
+            elif fmt_param == "col":
+                fmt_params["col"] = on_conflict_column.quoted_name
+
+            else:
+                raise RuntimeError("Driver passed an invalid format specification.")
 
         sql = fmt.format(**fmt_params)
 

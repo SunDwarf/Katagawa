@@ -523,13 +523,18 @@ class InsertQuery(BaseQuery):
         return self
 
     def on_conflict(self, column: 'md_column.Column') -> 'InsertQuery':
+        """
+        Get an :class:`.UpsertQuery` to react upon a conflict.
+
+        :param column: The :class:`.Column` upon which to check for a conflict.
+        """
         return UpsertQuery(self.session, column, *self.rows_to_insert)
 
     def generate_sql(self) -> typing.List[typing.Tuple[str, tuple]]:
         """
         Generates the SQL statements for this insert query.
 
-        This will return a list of two-item tuples to execute:
+        :returns: A list of two-item tuples to execute:
             - The SQL query+params to emit to actually insert the row
         """
         queries = []
@@ -546,6 +551,9 @@ class InsertQuery(BaseQuery):
 
 
 class UpsertQuery(InsertQuery):
+    """
+    Represents an UPSERT query.
+    """
     def __init__(self, sess: 'md_session.Session', column: 'md_column.Column',
                  *rows: 'md_table.Table'):
         super().__init__(sess)
@@ -556,19 +564,29 @@ class UpsertQuery(InsertQuery):
         self.rows_to_insert = list(rows)
 
     def update(self, *cols: 'md_column.Column') -> 'UpsertQuery':
+        """
+        Specify which :class:`.Column`s to update on an ID conflict
+        :param cols: The :class:`.Column`s to update on conflict.
+        """
         self._on_conflict_update = True
         self._update_cols = cols
         return self
 
     def nothing(self) -> 'UpsertQuery':
+        """
+        Specify that this query should do nothing if there's a conflict.
+
+        This is the default behavior.
+        """
+        self._update_cols = ()  # just in case
         return self
 
     def generate_sql(self) -> typing.List[typing.Tuple[str, tuple]]:
         """
         Generates the SQL statements for this upsert query.
 
-        This will return a list of two-item tuples to execute:
-            - The SQL query+params to emit to actually insert the row
+        :returns: A list of two-item tuples to execute:
+            - The SQL query+params to emit to actually upsert the row
         """
         queries = []
         counter = itertools.count()

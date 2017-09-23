@@ -100,7 +100,7 @@ class BaseDialect:
     def get_upsert_sql(self, table_name: str,
                        *, on_conflict_update: bool=True) -> 'typing.Tuple[str, set]':
         """
-        Get a formattable query and a set of required params to execute upsert-like functionality
+        Get a formattable query and a set of required params to execute upsert-like functionality.
         """
         raise NotImplementedError
 

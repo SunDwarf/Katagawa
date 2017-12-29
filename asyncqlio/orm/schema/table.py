@@ -14,7 +14,7 @@ from asyncqlio import db as md_db
 from asyncqlio.exc import SchemaError
 from asyncqlio.meta import typeproperty
 from asyncqlio.orm import inspection as md_inspection, session as md_session
-from asyncqlio.orm.schema import column as md_column, index as md_index, \
+from asyncqlio.orm.schema import column as md_column, history as md_history, index as md_index, \
     relationship as md_relationship
 from asyncqlio.orm.schema.decorators import enforce_bound
 from asyncqlio.sentinels import NO_DEFAULT, NO_VALUE
@@ -413,7 +413,7 @@ class Table(metaclass=TableMeta, register=False):
 
     def __init__(self, **kwargs):
         #: The actual table that this object is an instance of.
-        self.table = type(self)
+        self.table = type(self)  # type: TableMeta
 
         #: If this row existed before.
         #: If this is True, this row was fetched from the DB previously.
@@ -427,9 +427,8 @@ class Table(metaclass=TableMeta, register=False):
         #: The session this row is attached to.
         self._session = None  # type: md_session.Session
 
-        #: A mapping of Column -> Previous values for this row.
-        #: Used in update generation.
-        self._previous_values = {}
+        #: A mapping of Column -> ColumnChange object for this row.
+        self._history = {}  # type: typing.Dict[md_column.Column, md_history.ColumnChange]
 
         #: A mapping of relationship -> rows for this row.
         self._relationship_mapping = collections.defaultdict(lambda: [])
@@ -711,7 +710,8 @@ class Table(metaclass=TableMeta, register=False):
     __hash__ = object.__hash__
 
     # sql generation methods
-    def _get_insert_sql(self, emitter: typing.Callable[[], str], session: 'md_session.Session'):
+    def _get_insert_sql(self, emitter: typing.Callable[[], typing.Tuple[str, str]],
+                        session: 'md_session.Session'):
         """
         Gets the INSERT into statement SQL for this row.
         """
@@ -735,13 +735,12 @@ class Table(metaclass=TableMeta, register=False):
                     sql_params.append("DEFAULT")
             else:
                 # emit a new param
-                name = emitter()
-                param_name = session.bind.emit_param(name)
+                param, name = emitter()
                 # set the params to value
                 # then add the {param_name} to the VALUES
                 params[name] = value
                 column_names.append(column.quoted_name)
-                sql_params.append(param_name)
+                sql_params.append(param)
 
         q.write("({}) ".format(", ".join(column_names)))
         q.write("VALUES ")
@@ -760,7 +759,8 @@ class Table(metaclass=TableMeta, register=False):
         q.write(";")
         return q.getvalue(), params
 
-    def _get_update_sql(self, emitter: typing.Callable[[], str], session: 'md_session.Session'):
+    def _get_update_sql(self, emitter: typing.Callable[[], typing.Tuple[str, str]],
+                        session: 'md_session.Session'):
         """
         Gets the UPDATE statement SQL for this row.
         """
@@ -770,47 +770,45 @@ class Table(metaclass=TableMeta, register=False):
         params = {}
         base_query = io.StringIO()
         base_query.write("UPDATE {} SET ".format(self.__quoted_name__))
-        # the params to "set"
-        sets = []
 
-        # first, get our row history
-        history = md_inspection.get_row_history(self)
-        # ensure the row actually has some history
-        # otherwise, ignore it
-        if not history:
-            return None, None
-
-        for col, d in history.items():
-            # minor optimization
-            if d["old"] == d["new"]:
+        for column in self.table.columns:
+            # lookup the history object
+            # if there is none, there's been no change
+            try:
+                change = self._history[column]
+            except KeyError:
                 continue
 
-            # get the next param from the counter
-            # then store the name and the value in the row
-            p = emitter()
-            params[p] = d["new"]
-            sets.append("{} = {}".format(col.quoted_name, session.bind.emit_param(p)))
+            response = change.get_update_sql(emitter)
+            base_query.write(" ")
+            base_query.write(response.sql)
+            params.update(response.parameters)
 
-        # ensure there are actually fields to set
-        if not sets:
-            return None, None
+        base_query.write(" WHERE (")
+        where_clauses = 0
 
-        base_query.write(", ".join(sets))
-
-        wheres = []
-        for col in self.table.primary_key.columns:
-            # get the param name
-            # then store it in the params counter
-            # and build a new condition for the WHERE clause
-            p = emitter()
-            old = history[col]["old"]
-            if old is not NO_VALUE:
-                params[p] = old
+        for idx, column in enumerate(self.table.primary_key.columns):
+            # don't use history object here, however
+            try:
+                value = self._values[column]
+            except KeyError:
+                # bad, usually
+                continue
             else:
-                params[p] = history[col]["new"]
-            wheres.append("{} = {}".format(col.quoted_name, session.bind.emit_param(p)))
+                where_clauses += 1
 
-        base_query.write(" WHERE ({});".format(" AND ".join(wheres)))
+            name, param = emitter()
+            params[param] = value
+            base_query.write("{} = {}".format(column.quoted_fullname,
+                                              name))
+
+            if idx + 1 < len(self.table.primary_key.columns):
+                base_query.write(" AND ")
+
+        base_query.write(")")
+
+        if where_clauses == 0:
+            raise ValueError("No where clauses specified when generating update")
 
         return base_query.getvalue(), params
 
@@ -878,8 +876,8 @@ class Table(metaclass=TableMeta, register=False):
 
         return sql, params
 
-    def _get_delete_sql(self, emitter: typing.Callable[[], str], session: 'md_session.Session') \
-            -> typing.Tuple[str, typing.Any]:
+    def _get_delete_sql(self, emitter: typing.Callable[[], typing.Tuple[str, str]],
+                        session: 'md_session.Session') -> typing.Tuple[str, typing.Any]:
         """
         Gets the DELETE sql for this row.
         """
@@ -894,9 +892,9 @@ class Table(metaclass=TableMeta, register=False):
 
         for col, value in zip(self.table.primary_key.columns,
                               md_inspection.get_pk(self, as_tuple=True)):
-            name = emitter()
+            param, name = emitter()
             params[name] = value
-            wheres.append("{} = {}".format(col.quoted_fullname, session.bind.emit_param(name)))
+            wheres.append("{} = {}".format(col.quoted_fullname, param))
 
         query.write("WHERE ({}) ".format(" AND ".join(wheres)))
         return query.getvalue(), params
@@ -929,21 +927,13 @@ class Table(metaclass=TableMeta, register=False):
 
         return col.type.on_get(self)
 
-    def get_old_value(self, column: 'md_column.Column'):
-        """
-        Gets the old value from the specified column in this row.
-        """
-        if column.table != self.table:
-            raise ValueError("Column table must match row table")
-
-        try:
-            return self._previous_values[column]
-        except KeyError:
-            return NO_VALUE
-
     def get_column_value(self, column: 'md_column.Column', return_default: bool = True):
         """
         Gets the value from the specified column in this row.
+
+        .. warning::
+
+            This method should not be used by user code; it is for types to interface with only.
 
         :param column: The column.
         :param return_default: If this should return the column default, or NO_VALUE.
@@ -952,32 +942,48 @@ class Table(metaclass=TableMeta, register=False):
             raise ValueError("Column table must match row table")
 
         try:
-            return self._values[column]
+            return self._history[column].current_value
         except KeyError:
-            if return_default:
-                default = column.default
-                if default is NO_DEFAULT:
-                    return None
+            try:
+                return self._values[column]
+            except KeyError:
+                if return_default:
+                    default = column.default
+                    if default is NO_DEFAULT:
+                        return None
+                    else:
+                        return default
                 else:
-                    return default
-            else:
-                return NO_VALUE
+                    return NO_VALUE
 
     def store_column_value(self, column: 'md_column.Column', value: typing.Any,
-                           track_history: bool = True):
+                           *, track_history: bool = True):
         """
         Updates the value of a column in this row.
-
         This will also update the history of the value, if applicable.
+
+        .. warning::
+
+            This method should not be used by user code; it is for types to interface with only.
+
+        :param column: The column to store.
+        :param value: The value to store in the column.
+        :param track_history: Should history be tracked? Only false if creating a row from a data \
+            source.
         """
         if self.__deleted:
             raise RuntimeError("This row is marked as deleted")
 
-        if column not in self._previous_values and track_history:
-            if column in self._values:
-                self._previous_values[column] = self._values[column]
+        if track_history:
+            change = md_history.ValueChange(column)
+            if column in self._history:
+                change.handle_change_with_history(self._history[column], value)
+            else:
+                 change.handle_change(self._values[column], value)
 
-        self._values[column] = value
+            self._history[column] = change
+        else:
+            self._values[column] = value
 
         return self
 

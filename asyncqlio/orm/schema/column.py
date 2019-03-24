@@ -309,6 +309,24 @@ class Column(object):
         """
         return md_operators.Eq(self, other)
 
+    def isin(self, other) -> 'md_operators.In':
+        """
+        Checks if this column is in supplied list
+        """
+        return md_operators.In(self, other)
+
+    def between(self, min, max) -> 'md_operators.Between':
+        """
+        Checks if this column is between the min and max value
+        """
+        return md_operators.Between(self, min, max)
+
+    def nbetween(self, min, max) -> 'md_operators.NotBetween':
+        """
+        Checks if this column is not between the min and max value
+        """
+        return md_operators.NotBetween(self, min, max)
+
     def ne(self, other) -> 'md_operators.NEq':
         """
         Checks if this column is not equal to something else.

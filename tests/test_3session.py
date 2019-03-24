@@ -132,3 +132,23 @@ async def test_numeric_decimal(db: DatabaseInterface, table: Table):
 
     assert str(res.lat) == "12.010"
     assert str(res.lon) == "12.01"
+
+
+async def test_between(db: DatabaseInterface, table: Table):
+    test_ids = [210, 211, 212]
+
+    async with db.get_session() as sess:
+        await sess.insert.rows(table(id=210, name="between0", email="0", lat=55.010, lon=55.010)).run()
+        await sess.insert.rows(table(id=211, name="between1", email="1", lat=55.110, lon=55.110)).run()
+        await sess.insert.rows(table(id=212, name="between2", email="2", lat=55.110, lon=55.110)).run()
+
+    async with db.get_session() as sess:
+        res_first = await sess.select(table).where(table.id.between(200, 220)).first()
+        res_all = await sess.select(table).where(table.id.between(200, 220)).all()
+        res_not = await sess.select(table).where(table.id.nbetween(200, 220)).first()
+
+        all = [r async for r in res_all]
+
+    assert res_first.id == 210
+    assert len(all) == 3
+    assert res_not not in test_ids
